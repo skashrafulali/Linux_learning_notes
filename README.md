@@ -2,9 +2,9 @@ Linux Learning Notes
 
 Introduction
 
-This repository contains my Linux learning notes as I begin my cybersecurity journey.
+This repository contains my Linux learning notes. Pardon my mistakes if anything happens but I made sure that nothing is.
 
-Lets get started.
+Lets get started.Have fun!!!!!!!!!!
 
 # 1. pwd (Print Working Directory)
 
