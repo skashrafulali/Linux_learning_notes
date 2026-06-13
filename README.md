@@ -390,4 +390,389 @@ Example:
 ```
 
 ---
+Linux Learning Notes - Day 2 
+
+---
+
+21. nano
+
+Simple terminal text editor.
+
+Open a file:
+
+```bash
+nano notes.txt
+```
+
+Save:
+
+```bash
+Ctrl + O
+```
+
+Exit:
+
+```bash
+Ctrl + X
+```
+
+---
+
+22. less
+
+View large files page by page.
+
+```bash
+less notes.txt
+```
+
+Navigation:
+
+```bash
+Space  -> Next page
+b      -> Previous page
+q      -> Quit
+```
+
+---
+
+23. head
+
+Show first 10 lines of a file.
+
+```bash
+head notes.txt
+```
+
+Show first 5 lines:
+
+```bash
+head -5 notes.txt
+```
+---
+
+24. tail
+
+Show last 10 lines.
+
+```bash
+tail notes.txt
+```
+
+Show last 20 lines:
+
+```bash
+tail -20 notes.txt
+```
+
+Monitor logs in real time:
+
+```bash
+tail -f logfile.log
+```
+
+---
+
+25. wc (Word Count)
+
+Count lines, words, and characters.
+
+```bash
+wc notes.txt
+```
+
+Example Output:
+
+```bash
+10 50 300 notes.txt
+```
+
+Meaning:
+
+```text
+10 lines
+50 words
+300 characters
+```
+
+---
+
+26. sort
+
+Sort lines alphabetically.
+
+```bash
+sort names.txt
+```
+
+Example:
+
+Before:
+
+```text
+John
+Alice
+Bob
+```
+
+After:
+
+```text
+Alice
+Bob
+John
+```
+
+---
+
+27. uniq
+
+Remove duplicate lines.
+
+```bash
+uniq names.txt
+```
+
+Usually combined with sort:
+
+```bash
+sort names.txt | uniq
+```
+
+---
+
+28. chmod
+
+Change file permissions.
+
+Current permissions:
+
+```bash
+ls -l
+```
+
+Example:
+
+```text
+-rw-r--r--
+```
+
+Make file executable:
+
+```bash
+chmod +x script.sh
+```
+
+Give everyone full permission:
+
+```bash
+chmod 777 file.txt
+```
+
+⚠️ Avoid 777 unless necessary.
+
+---
+
+29. chown
+
+Change file owner.
+
+```bash
+sudo chown user file.txt
+```
+
+Example:
+
+```bash
+sudo chown ashraful notes.txt
+```
+
+---
+
+30. sudo
+
+Run commands as administrator.
+
+```bash
+sudo apt update
+```
+
+You may be asked for your password.
+
+---
+
+31. apt update
+
+Update package lists.
+
+```bash
+sudo apt update
+```
+
+Does NOT install updates.
+
+It only refreshes available package information.
+
+---
+
+32. apt upgrade
+
+Install available updates.
+
+```bash
+sudo apt upgrade
+```
+
+Update everything automatically:
+
+```bash
+sudo apt upgrade -y
+```
+
+---
+
+33. apt install
+
+Install software.
+
+Example:
+
+```bash
+sudo apt install nmap
+```
+
+Install multiple packages:
+
+```bash
+sudo apt install nmap net-tools
+```
+
+---
+
+34. apt remove
+
+Remove software.
+
+```bash
+sudo apt remove nmap
+```
+
+Remove configuration files too:
+
+```bash
+sudo apt purge nmap
+```
+
+---
+
+35. which
+
+Find where a command is located.
+
+```bash
+which python3
+```
+
+Example Output:
+
+```bash
+/usr/bin/python3
+```
+
+---
+
+36. locate
+
+Find files quickly.
+
+```bash
+locate notes.txt
+```
+
+May require database update first:
+
+```bash
+sudo updatedb
+```
+
+---
+
+37. id
+
+Show user information.
+
+```bash
+id
+```
+
+Example Output:
+
+```bash
+uid=1000(ashraful)
+gid=1000(ashraful)
+groups=1000(ashraful)
+```
+
+---
+
+38. passwd
+
+Change your password.
+
+```bash
+passwd
+```
+
+Change another user's password:
+
+```bash
+sudo passwd username
+```
+
+---
+
+39. uname
+
+Display system information.
+
+```bash
+uname
+```
+
+Detailed information:
+
+```bash
+uname -a
+```
+
+Example Output:
+
+```text
+Linux kali 6.12.0 x86_64 GNU/Linux
+```
+
+---
+
+40. df
+
+Show disk usage.
+
+```bash
+df
+```
+
+Human-readable format:
+
+```bash
+df -h
+```
+
+Example Output:
+
+```text
+Filesystem Size Used Avail Use%
+100G       50G   50G  50%
+```
+
+---
 
