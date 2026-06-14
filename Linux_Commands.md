@@ -772,4 +772,457 @@ Filesystem Size Used Avail Use%
 100G       50G   50G  50%
 ```
 
+# 41. ps
+
+View running processes.
+
+```bash
+ps
+```
+
+More useful:
+
+```bash
+ps aux
+```
+
+Example Output:
+
+```text
+USER      PID   %CPU   COMMAND
+root      1     0.1    systemd
+ashraful  2500  0.5    firefox
+```
+
+---
+
+# 42. top
+
+Real-time process monitor.
+
+```bash
+top
+```
+
+Useful for:
+
+* CPU usage
+* Memory usage
+* Running processes
+
+Exit:
+
+```bash
+q
+```
+
+---
+
+# 43. htop
+
+Better version of top.
+
+Install:
+
+```bash
+sudo apt install htop
+```
+
+Run:
+
+```bash
+htop
+```
+
+Exit:
+
+```bash
+q
+```
+
+---
+
+# 44. kill
+
+Terminate a process.
+
+Find PID:
+
+```bash
+ps aux
+```
+
+Kill process:
+
+```bash
+kill 1234
+```
+
+Example:
+
+```bash
+kill 2500
+```
+
+---
+
+# 45. kill -9
+
+Force kill.
+
+```bash
+kill -9 2500
+```
+
+Use only if normal kill fails.
+
+---
+
+## Network Commands
+
+---
+
+# 46. ping
+
+Check network connectivity.
+
+```bash
+ping google.com
+```
+
+Send only 4 packets:
+
+```bash
+ping -c 4 google.com
+```
+
+---
+
+# 47. ip a
+
+Show network interfaces.
+
+```bash
+ip a
+```
+
+Useful to find:
+
+* IP Address
+* Interface Name
+* Network Status
+
+---
+
+# 48. ip route
+
+Show routing table.
+
+```bash
+ip route
+```
+
+Example:
+
+```text
+default via 192.168.0.1
+```
+
+This is usually your router.
+
+---
+
+# 49. ss
+
+Show active connections.
+
+```bash
+ss -tuln
+```
+
+Meaning:
+
+```text
+t = TCP
+u = UDP
+l = Listening
+n = Numeric
+```
+
+Very important for cybersecurity.
+
+---
+
+# 50. netstat
+
+Older but still useful.
+
+Install:
+
+```bash
+sudo apt install net-tools
+```
+
+Run:
+
+```bash
+netstat -tuln
+```
+
+---
+
+## Downloading Files
+
+---
+
+# 51. wget
+
+Download files.
+
+```bash
+wget https://example.com/file.zip
+```
+
+Save with custom name:
+
+```bash
+wget -O notes.zip https://example.com/file.zip
+```
+
+---
+
+# 52. curl
+
+Download or interact with websites/APIs.
+
+View webpage source:
+
+```bash
+curl https://example.com
+```
+
+Download file:
+
+```bash
+curl -O https://example.com/file.zip
+```
+
+Cybersecurity professionals use curl constantly.
+
+---
+
+## Archives
+
+---
+
+# 53. tar
+
+Create archive.
+
+```bash
+tar -cvf backup.tar folder/
+```
+
+Extract:
+
+```bash
+tar -xvf backup.tar
+```
+
+---
+
+# 54. gzip
+
+Compress file.
+
+```bash
+gzip notes.txt
+```
+
+Creates:
+
+```text
+notes.txt.gz
+```
+
+---
+
+# 55. unzip
+
+Extract zip files.
+
+```bash
+unzip file.zip
+```
+
+---
+
+# 56. zip
+
+Create zip archive.
+
+```bash
+zip files.zip file1.txt file2.txt
+```
+
+---
+
+## System Services
+
+---
+
+# 57. systemctl
+
+Manage services.
+
+Check SSH:
+
+```bash
+systemctl status ssh
+```
+
+Start SSH:
+
+```bash
+sudo systemctl start ssh
+```
+
+Enable at boot:
+
+```bash
+sudo systemctl enable ssh
+```
+
+---
+
+# 58. service
+
+Older service manager.
+
+```bash
+service ssh status
+```
+
+Restart:
+
+```bash
+sudo service ssh restart
+```
+
+---
+
+## Terminal Productivity
+
+---
+
+# 59. alias
+
+Create shortcuts.
+
+Example:
+
+```bash
+alias ll='ls -la'
+```
+
+Now:
+
+```bash
+ll
+```
+
+works like:
+
+```bash
+ls -la
+```
+
+---
+
+# 60. history | grep
+
+Search command history.
+
+```bash
+history | grep apt
+```
+
+Example Output:
+
+```text
+23 sudo apt update
+24 sudo apt upgrade
+```
+
+Very useful when you forget previous commands.
+
+---
+
+# Practice Lab
+
+Open Terminal and perform:
+
+```bash
+ip a
+
+ping -c 4 google.com
+
+ss -tuln
+
+curl https://example.com
+
+wget https://example.com
+
+ps aux
+
+top
+
+history | grep sudo
+
+alias ll='ls -la'
+
+ll
+```
+
+---
+
+# Cybersecurity Commands Learned
+
+Process Monitoring:
+
+* ps
+* top
+* htop
+* kill
+
+Networking:
+
+* ping
+* ip
+* ss
+* netstat
+
+Downloads:
+
+* curl
+* wget
+
+Archives:
+
+* tar
+* zip
+* unzip
+* gzip
+
+Services:
+
+* systemctl
+* service
+
+Productivity:
+
+* alias
+* history | grep
+
+
 ---
