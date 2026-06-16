@@ -1225,4 +1225,416 @@ Productivity:
 * history | grep
 
 
+# 61. grep
+
+Search text inside files.
+
+```bash
+grep root /etc/passwd
+```
+
+Output:
+
+```text
+root:x:0:0:root:/root:/bin/bash
+```
+
+Ignore case:
+
+```bash
+grep -i admin users.txt
+```
+
+Show line numbers:
+
+```bash
+grep -n error logs.txt
+```
+
+---
+
+# 62. grep -r
+
+Search recursively in folders.
+
+```bash
+grep -r password .
+```
+
+Searches every file in the current directory.
+
+Very useful in CTFs.
+
+---
+
+# 63. cut
+
+Extract specific columns.
+
+Example file:
+
+```text
+john:1001
+alice:1002
+```
+
+Command:
+
+```bash
+cut -d ":" -f1 users.txt
+```
+
+Output:
+
+```text
+john
+alice
+```
+
+---
+
+# 64. sort
+
+Sort data.
+
+```bash
+sort names.txt
+```
+
+Reverse sort:
+
+```bash
+sort -r names.txt
+```
+
+Numeric sort:
+
+```bash
+sort -n numbers.txt
+```
+
+---
+
+# 65. uniq
+
+Remove duplicates.
+
+```bash
+sort names.txt | uniq
+```
+
+Count duplicates:
+
+```bash
+sort names.txt | uniq -c
+```
+
+---
+
+# 66. tee
+
+Display and save output simultaneously.
+
+```bash
+echo "Linux" | tee notes.txt
+```
+
+Append:
+
+```bash
+echo "Cybersecurity" | tee -a notes.txt
+```
+
+---
+
+# 67. xargs
+
+Pass output as command arguments.
+
+Example:
+
+```bash
+cat files.txt | xargs rm
+```
+
+Deletes files listed inside files.txt.
+
+---
+
+# 68. tr
+
+Replace characters.
+
+Convert lowercase to uppercase:
+
+```bash
+echo hello | tr a-z A-Z
+```
+
+Output:
+
+```text
+HELLO
+```
+
+---
+
+# 69. sed
+
+Find and replace text.
+
+```bash
+sed 's/Linux/Kali/' notes.txt
+```
+
+Replace globally:
+
+```bash
+sed 's/Linux/Kali/g' notes.txt
+```
+
+---
+
+# 70. awk
+
+Powerful text processor.
+
+Show first column:
+
+```bash
+awk '{print $1}' users.txt
+```
+
+Example:
+
+```text
+John 20
+Alice 25
+```
+
+Output:
+
+```text
+John
+Alice
+```
+
+---
+
+## SSH & Remote Access
+
+---
+
+# 71. ssh
+
+Connect to remote machine.
+
+```bash
+ssh user@192.168.1.10
+```
+
+Example:
+
+```bash
+ssh bandit0@bandit.labs.overthewire.org
+```
+
+You'll use this constantly in OverTheWire.
+
+---
+
+# 72. scp
+
+Copy files over SSH.
+
+Copy local to remote:
+
+```bash
+scp file.txt user@server:/home/user/
+```
+
+Copy remote to local:
+
+```bash
+scp user@server:/home/user/file.txt .
+```
+
+---
+
+# 73. ssh-keygen
+
+Generate SSH key pair.
+
+```bash
+ssh-keygen
+```
+
+Creates:
+
+```text
+id_rsa
+id_rsa.pub
+```
+
+---
+
+## Networking & Recon
+
+---
+
+# 74. nc (Netcat)
+
+Known as the "Swiss Army Knife of Networking".
+
+Connect to a port:
+
+```bash
+nc 192.168.1.10 80
+```
+
+Listen on a port:
+
+```bash
+nc -lvnp 4444
+```
+
+Extremely important for CTFs.
+
+---
+
+# 75. dig
+
+DNS lookup tool.
+
+Install:
+
+```bash
+sudo apt install dnsutils
+```
+
+Usage:
+
+```bash
+dig google.com
+```
+
+---
+
+# 76. nslookup
+
+DNS information.
+
+```bash
+nslookup google.com
+```
+
+---
+
+# 77. host
+
+Quick DNS lookup.
+
+```bash
+host google.com
+```
+
+---
+
+# 78. traceroute
+
+See network path.
+
+Install:
+
+```bash
+sudo apt install traceroute
+```
+
+Run:
+
+```bash
+traceroute google.com
+```
+
+---
+
+## File Permissions
+
+---
+
+# 79. chmod (Numeric)
+
+Permission examples:
+
+```bash
+chmod 755 script.sh
+```
+
+Meaning:
+
+```text
+Owner = rwx = 7
+Group = r-x = 5
+Others = r-x = 5
+```
+
+Common values:
+
+```text
+777 = Full access
+755 = Executable
+644 = Normal file
+600 = Private file
+```
+
+---
+
+# 80. find (Advanced)
+
+Find all .txt files:
+
+```bash
+find . -name "*.txt"
+```
+
+Find large files:
+
+```bash
+find . -size +100M
+```
+
+Find files owned by root:
+
+```bash
+find / -user root
+```
+
+Find and delete:
+
+```bash
+find . -name "*.tmp" -delete
+```
+
+Be careful!
+
+---
+
+# Mini Lab
+
+Create a file:
+
+```bash
+echo "password123" > secrets.txt
+
+grep password secrets.txt
+
+cat secrets.txt | tr a-z A-Z
+
+sed 's/password123/hacked123/' secrets.txt
+
+awk '{print $1}' secrets.txt
+
+find . -name "*.txt"
+```
+
 ---
