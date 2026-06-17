@@ -1,23 +1,211 @@
-HTTP Status Codes:
+# HTTP Status Codes Cheat Sheet
 
-100-199 - Information Response	These are sent to tell the client the first part of their request has been accepted and they should continue sending the rest of their request. These codes are no longer very common.
-200-299 - Success	This range of status codes is used to tell the client their request was successful.
-300-399 - Redirection	These are used to redirect the client's request to another resource. This can be either to a different webpage or a different website altogether.
-400-499 - Client Errors	Used to inform the client that there was an error with their request.
-500-599 - Server Errors	This is reserved for errors happening on the server-side and usually indicate quite a major problem with the server handling the request.
+HTTP status codes are responses sent by a web server to indicate the result of a client's request.
 
-Common HTTP Status Codes:
+## Status Code Categories
 
-There are a lot of different HTTP status codes and that's not including the fact that applications can even define their own, we'll go over the most common HTTP responses you are likely to come across:
+| Range   | Category                | Description                                                               |
+| ------- | ----------------------- | ------------------------------------------------------------------------- |
+| 100-199 | Informational Responses | The request has been received and the client should continue the process. |
+| 200-299 | Success                 | The request was successfully received, understood, and processed.         |
+| 300-399 | Redirection             | Further action is required to complete the request.                       |
+| 400-499 | Client Errors           | The request contains bad syntax or cannot be fulfilled.                   |
+| 500-599 | Server Errors           | The server failed to fulfill a valid request.                             |
 
-200 - [OK	]-- The request was completed successfully.
-201 - [Created]	-- A resource has been created (for example a new user or new blog post).
-301 - [Moved Permanently] -- This redirects the client's browser to a new webpage or tells search engines that the page has moved somewhere else and to look there instead.
-302 - [Found] --	Similar to the above permanent redirect, but as the name suggests, this is only a temporary change and it may change again in the near future.
-400 - [Bad Request] --	This tells the browser that something was either wrong or missing in their request. This could sometimes be used if the web server resource that is being requested expected a certain parameter that the client didn't send.
-401 - [Not Authorised] --	You are not currently allowed to view this resource until you have authorised with the web application, most commonly with a username and password.
-403 - [Forbidden] --	You do not have permission to view this resource whether you are logged in or not.
-405 - [Method Not Allowed] --	The resource does not allow this method request, for example, you send a GET request to the resource /create-account when it was expecting a POST request instead.
-404 - [Page Not Found] --	The page/resource you requested does not exist.
-500 - [Internal Service Error] --	The server has encountered some kind of error with your request that it doesn't know how to handle properly.
-503 - [Service Unavailable] --	This server cannot handle your request as it's either overloaded or down for maintenance.
+---
+
+# Common HTTP Status Codes
+
+## Success Responses
+
+### 200 OK
+
+The request was completed successfully.
+
+**Example:**
+
+```bash
+GET /index.html
+```
+
+**Response:**
+
+```http
+HTTP/1.1 200 OK
+```
+
+---
+
+### 201 Created
+
+A new resource has been successfully created.
+
+**Example:**
+
+```bash
+POST /users
+```
+
+**Response:**
+
+```http
+HTTP/1.1 201 Created
+```
+
+---
+
+## Redirection Responses
+
+### 301 Moved Permanently
+
+The requested resource has been permanently moved to a new URL.
+
+**Example:**
+
+```http
+HTTP/1.1 301 Moved Permanently
+Location: https://newsite.com
+```
+
+---
+
+### 302 Found
+
+The resource has been temporarily moved.
+
+**Example:**
+
+```http
+HTTP/1.1 302 Found
+Location: https://temporary-page.com
+```
+
+---
+
+## Client Error Responses
+
+### 400 Bad Request
+
+The server cannot process the request due to invalid syntax or missing parameters.
+
+**Example:**
+
+```http
+HTTP/1.1 400 Bad Request
+```
+
+---
+
+### 401 Unauthorized
+
+Authentication is required to access the resource.
+
+**Example:**
+
+```http
+HTTP/1.1 401 Unauthorized
+```
+
+---
+
+### 403 Forbidden
+
+You are authenticated (or not), but you do not have permission to access the resource.
+
+**Example:**
+
+```http
+HTTP/1.1 403 Forbidden
+```
+
+---
+
+### 404 Not Found
+
+The requested resource does not exist on the server.
+
+**Example:**
+
+```http
+HTTP/1.1 404 Not Found
+```
+
+---
+
+### 405 Method Not Allowed
+
+The HTTP method used is not supported for the requested resource.
+
+**Example:**
+
+```bash
+GET /create-account
+```
+
+When the endpoint expects:
+
+```bash
+POST /create-account
+```
+
+**Response:**
+
+```http
+HTTP/1.1 405 Method Not Allowed
+```
+
+---
+
+## Server Error Responses
+
+### 500 Internal Server Error
+
+The server encountered an unexpected condition and could not process the request.
+
+**Example:**
+
+```http
+HTTP/1.1 500 Internal Server Error
+```
+
+---
+
+### 503 Service Unavailable
+
+The server is temporarily unavailable due to maintenance or high traffic.
+
+**Example:**
+
+```http
+HTTP/1.1 503 Service Unavailable
+```
+
+---
+
+# Quick Memorization Tips
+
+✅ **200** → Everything is OK
+
+✅ **201** → Something new was Created
+
+✅ **301** → Permanent Redirect
+
+✅ **302** → Temporary Redirect
+
+✅ **400** → Bad Request from Client
+
+✅ **401** → Login Required
+
+✅ **403** → Access Forbidden
+
+✅ **404** → Page Not Found
+
+✅ **405** → Wrong HTTP Method
+
+✅ **500** → Server Broke
+
+✅ **503** → Server Busy / Under Maintenance
+
+---
+
+*Part of my Linux & Cybersecurity Learning Journey.*
