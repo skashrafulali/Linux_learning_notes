@@ -33,3 +33,22 @@
 5. For each subnet, identify: **Network ID, Usable Host Range, Broadcast Address**.
 
 ---
+## 🧮 Practice Questions (Different Approaches)
+
+### Question 1 — Approach: Given Number of Subnets Needed
+
+**Q:** You have the network `192.168.1.0/24`. You need **4 subnets**. Find the new subnet mask, block size, and list all subnets with their ranges.
+
+**Answer:**
+- Need 4 subnets → `2^n ≥ 4` → `n = 2` bits borrowed
+- New mask: `/24 + 2` = **`/26`** = `255.255.255.192`
+- Block size = `256 − 192` = **64**
+
+| Subnet | Network ID      | Host Range       | Broadcast        |
+|--------|-----------------|------------------|-------------------|
+| 1      | 192.168.1.0     | .1 – .62         | .63               |
+| 2      | 192.168.1.64    | .65 – .126       | .127              |
+| 3      | 192.168.1.128   | .129 – .190      | .191              |
+| 4      | 192.168.1.192   | .193 – .254      | .255              |
+
+---
