@@ -67,3 +67,17 @@
 - Broadcast: `10.0.0.63`
 
 ---
+### Question 3 — Approach: Find Subnet of a Given IP Address
+
+**Q:** Given IP `172.16.58.130/27`, find the Network ID, Broadcast Address, and Usable Host Range.
+
+**Answer:**
+- `/27` = `255.255.255.224` → Block size = `256 − 224` = **32**
+- Multiples of 32 in 4th octet: `0, 32, 64, 96, 128, 160...`
+- `130` falls between `128` and `160` → Network = **`172.16.58.128`**
+- Next multiple (160) − 1 = Broadcast = **`172.16.58.159`**
+- Usable Host Range: **`172.16.58.129 – 172.16.58.158`**
+
+---
+
+> 💡 **Quick Tip:** Always find the **block size**, then keep adding it to get each subnet boundary — fastest method for exams (CCNA-style).
