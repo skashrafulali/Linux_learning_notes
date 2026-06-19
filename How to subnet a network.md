@@ -52,3 +52,18 @@
 | 4      | 192.168.1.192   | .193 – .254      | .255              |
 
 ---
+### Question 2 — Approach: Given Number of Hosts Needed
+
+**Q:** You need a subnet that supports **50 hosts**. What is the smallest subnet mask you can use? Show the network for `10.0.0.0`.
+
+**Answer:**
+- Need 50 usable hosts → `2^h − 2 ≥ 50` → `h = 6` (`2^6 − 2 = 62`) ✅ (h=5 gives only 30, not enough)
+- Host bits = 6 → Network bits = `32 − 6` = **`/26`** = `255.255.255.192`
+- Block size = 64
+
+**Result:** `10.0.0.0/26`
+- Network ID: `10.0.0.0`
+- Usable Hosts: `10.0.0.1 – 10.0.0.62`
+- Broadcast: `10.0.0.63`
+
+---
