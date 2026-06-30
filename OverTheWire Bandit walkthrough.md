@@ -13,7 +13,7 @@ These are my personal notes and solutions for Bandit Levels 0–12, including wh
 ### Password
 
 ```
-bandit
+bandit0
 ```
 
 ### Objective
