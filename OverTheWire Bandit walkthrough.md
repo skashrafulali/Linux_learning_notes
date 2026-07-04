@@ -366,52 +366,86 @@ cat data.txt | tr 'A-Za-z' 'N-ZA-Mn-za-m'
 
 # Bandit 12
 
-### Hint
+---
 
-The file was a hexdump that had been compressed multiple times.
+## Hint
 
-### Commands Used
+The file was a **hexdump** that had been compressed multiple times.
 
-Create workspace:
+---
+
+## Commands Used
+
+### Create workspace
 
 ```bash
-mktemp -d
-cd /tmp/tempfolder
+workdir=$(mktemp -d)
+cd "$workdir"
 ```
 
-Copy file:
+### Copy the file
 
 ```bash
 cp ~/data.txt .
 ```
 
-Reverse hexdump:
+### Reverse the hexdump
 
 ```bash
 xxd -r data.txt > data
 ```
 
-Identify file type:
+### Identify file type
 
 ```bash
 file data
 ```
 
-Extract based on type:
+### If the file is gzip
 
 ```bash
-gunzip file.gz
-bunzip2 file.bz2
-tar -xf file.tar
+mv data data.gz
+gunzip data.gz
 ```
 
-Repeat:
+### If the file is bzip2
 
 ```bash
-file filename
+mv data data.bz2
+bunzip2 data.bz2
 ```
 
-until a text file appears.
+### If the file is a tar archive
+
+```bash
+mv data data.tar
+tar -xf data.tar
+```
+
+### After extracting
+
+```bash
+ls
+file *
+```
+
+### Repeat
+
+Continue checking the newest extracted file.
+
+```bash
+file <filename>
+```
+
+Repeat the appropriate extraction command until the file becomes plain text.
+
+### Read the password
+
+```bash
+cat <filename>
+```
+
+---
 
 # Bandit 13
 
