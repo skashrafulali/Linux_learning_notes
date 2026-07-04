@@ -413,17 +413,233 @@ file filename
 
 until a text file appears.
 
+# Bandit 13
+
+### Hint
+
+The password for the next level can be accessed using a private SSH key stored in the home directory.
+
+### Commands Used
+
+List files:
+
+```bash
+ls
+```
+
+View the private key:
+
+```bash
+cat sshkey.private
+```
+
+Login using the key:
+
+```bash
+ssh -i sshkey.private bandit14@localhost -p 2220
+```
+
+Retrieve the password:
+
+```bash
+cat /etc/bandit_pass/bandit14
+```
+
 ### What I Learned
 
-* `xxd -r` reverses a hexdump.
-* `file` identifies file types.
-* `gunzip`, `bunzip2`, and `tar` extract archives.
-* Real-world troubleshooting often requires repeatedly inspecting files.
+* SSH can authenticate using private keys instead of passwords.
+* `-i` specifies the identity (private key) file.
+* `localhost` means the SSH connection is made to the same machine.
+* Some Linux files are readable only by specific users.
 
 ### Password Found
 
 ```text
-FO5dwFsc0cbaIiH0h8J2eUks2vdTDwAn
+<password displayed from /etc/bandit_pass/bandit14>
+```
+
+---
+
+# Bandit 14
+
+### Hint
+
+Submit the current password to a service running on localhost port **30000**.
+
+### Commands Used
+
+Using a pipe:
+
+```bash
+echo "<current_password>" | nc localhost 30000
+```
+
+Or interactively:
+
+```bash
+nc localhost 30000
+```
+
+Then paste the current password and press **Enter**.
+
+### What I Learned
+
+* `nc` (Netcat) is a networking utility for reading and writing TCP/UDP connections.
+* `echo` sends text directly into another command using a pipe (`|`).
+* Many penetration testing tools communicate over TCP connections like this.
+
+### Password Found
+
+```text
+<server response>
+```
+
+---
+
+# Bandit 15
+
+### Hint
+
+Connect to localhost on port **30001** using SSL/TLS.
+
+### Commands Used
+
+Start an encrypted connection:
+
+```bash
+openssl s_client -connect localhost:30001
+```
+
+After the connection is established, paste the current password and press **Enter**.
+
+### What I Learned
+
+* Some services require encrypted communication.
+* `openssl s_client` acts as a simple SSL/TLS client.
+* Encryption protects data while it travels across the network.
+
+### Password Found
+
+```text
+<server response>
+```
+
+---
+
+# Bandit 16
+
+### Hint
+
+Find the port between **31000–32000** that speaks SSL and returns the next private key.
+
+### Commands Used
+
+Scan the port range:
+
+```bash
+nmap -p 31000-32000 localhost
+```
+
+Identify services running on those ports:
+
+```bash
+nmap -sV -p 31000-32000 localhost
+```
+
+Connect to the correct SSL service:
+
+```bash
+openssl s_client -connect localhost:<port>
+```
+
+Paste the current password.
+
+The service returns a private SSH key.
+
+Save it:
+
+```bash
+nano bandit17.key
+```
+
+or
+
+```bash
+cat > bandit17.key
+```
+
+Paste the key, then press:
+
+```
+Ctrl + D
+```
+
+Secure the key:
+
+```bash
+chmod 600 bandit17.key
+```
+
+Login using the key:
+
+```bash
+ssh -i bandit17.key bandit17@localhost -p 2220
+```
+
+Retrieve the password:
+
+```bash
+cat /etc/bandit_pass/bandit17
+```
+
+### What I Learned
+
+* `nmap` is used to discover open ports and services.
+* `-sV` attempts service/version detection.
+* SSH refuses private keys with insecure permissions.
+* `chmod 600` allows only the owner to read and write the key.
+
+### Password Found
+
+```text
+<password from /etc/bandit_pass/bandit17>
+```
+
+---
+
+# Bandit 17
+
+### Hint
+
+Two files contain passwords. Only one line has changed.
+
+### Commands Used
+
+Compare the files:
+
+```bash
+diff passwords.old passwords.new
+```
+
+Or use unified output:
+
+```bash
+diff -u passwords.old passwords.new
+```
+
+The changed line in `passwords.new` is the password for the next level.
+
+### What I Learned
+
+* `diff` compares two files line by line.
+* Lines beginning with `<` exist only in the first file.
+* Lines beginning with `>` exist only in the second file.
+* `diff -u` provides a cleaner, unified comparison commonly used by developers.
+
+### Password Found
+
+```text
+<changed line from passwords.new>
 ```
 
 ---
