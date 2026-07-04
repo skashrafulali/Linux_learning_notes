@@ -6,6 +6,9 @@ I'm currently learning Linux, command-line navigation, and basic cybersecurity c
 
 These are my personal notes and solutions for Bandit Levels 0–12, including what I learned and why the commands worked.
 
+# Dont try to follow the passwords I have given.OverTheaWire may change the passwords whenever they like.
+# Do follow the instruction to retrieve the passwords.
+
 ---
 
 # Bandit 0
